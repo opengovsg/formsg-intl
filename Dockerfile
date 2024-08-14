@@ -1,0 +1,104 @@
+# syntax=docker/dockerfile:1
+
+FROM node:hydrogen-alpine3.18 as build
+
+# node-modules-builder stage installs/compiles the node_modules folder
+# Python version must be specified starting in alpine3.12
+RUN apk update && apk upgrade && \
+    apk --no-cache add --virtual native-deps \
+    g++ gcc libgcc libstdc++ linux-headers autoconf automake make nasm python3 git curl && \
+    npm install --quiet node-gyp -g
+WORKDIR /build
+
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/package-lock.json ./shared/
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+COPY frontend/patches ./frontend/patches
+
+# Allow running of postinstall scripts
+# RUN npm config set unsafe-perm true
+# --legacy-peer-deps flag
+# A breaking change in the peer dependency resolution strategy was introduced in
+# npm 7. This resulted in npm throwing an error when installing packages:
+# npm ERR! code ERESOLVE
+# npm ERR! ERESOLVE unable to resolve dependency tree
+# See also:
+# * https://stackoverflow.com/questions/66239691/what-does-npm-install-legacy-peer-deps-do-exactly-when-is-it-recommended-wh
+# NOTE: This flag is used again later in the build process when calling npm prune.
+RUN npm ci --legacy-peer-deps
+
+COPY . ./
+
+# --openssl-legacy-provider flag
+# A breaking change in the SSL provider was introduced in node 17. This caused
+# webpack 4 to break. This is an interim solution; we should investigate removing
+# this flag once angular has been removed and we have upgraded to CRA5 (which uses
+# webpack 5).
+# See also:
+# * https://stackoverflow.com/questions/69692842/error-message-error0308010cdigital-envelope-routinesunsupported
+# * https://github.com/webpack/webpack/issues/14532#issuecomment-1304378535
+# These options are only used in the build stage, not the start stage.
+ENV NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider"
+
+RUN npm run build
+
+# Move mockpass to prod dependency since we need the static certs
+RUN npm install -P @opengovsg/mockpass
+
+RUN npm prune --production --legacy-peer-deps
+
+# This stage builds the final container
+FROM node:hydrogen-alpine3.18
+LABEL maintainer="Demos at OGP<demos@open.gov.sg>"
+WORKDIR /opt/formsg
+
+# Install build from backend-build
+COPY --from=build /build/node_modules /opt/formsg/node_modules
+COPY --from=build /build/package.json /opt/formsg/package.json
+COPY --from=build /build/dist /opt/formsg/dist
+
+# Grab Singpass RP jwks config from __tests__
+COPY --from=build /build/__tests__/setup/certs /opt/formsg/__tests__/setup/certs
+
+# Built backend goes back to root working directory
+RUN mv /opt/formsg/dist/backend/src /opt/formsg/
+RUN mv /opt/formsg/dist/backend/shared /opt/formsg/
+
+# Install chromium from official docs
+# https://github.com/puppeteer/puppeteer/blob/master/docs/troubleshooting.md#running-on-alpine
+# Note that each alpine version supports a specific version of chromium
+# Note that chromium and puppeteer-core are released together and it is the only version
+# that is guaranteed to work. Upgrades must be done in lockstep.
+# https://www.npmjs.com/package/puppeteer-core?activeTab=versions for corresponding versions
+
+RUN apk add --no-cache \
+# Compatible chromium versions can be found here https://pkgs.alpinelinux.org/packages?name=chromium&branch=v3.18&repo=&arch=&maintainer=
+    chromium=119.0.6045.159-r0 \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    tini
+
+# Tell Puppeteer to skip installing Chrome. We'll be using the installed package.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# This package is needed to render Chinese characters in autoreply PDFs
+RUN apk add font-wqy-zenhei --repository https://dl-cdn.alpinelinux.org/alpine/edge/community
+
+ENV CHROMIUM_BIN=/usr/bin/chromium-browser
+
+# Run as non-privileged user
+RUN addgroup -S formsguser && adduser -S -g formsguser formsguser
+USER formsguser
+
+ENV NODE_ENV=production
+EXPOSE 5000
+
+# tini is the init process that will adopt orphaned zombie processes
+# e.g. chromium when launched to create a new PDF
+ENTRYPOINT [ "tini", "-s", "--" ]
+CMD [ "npm", "start" ]
