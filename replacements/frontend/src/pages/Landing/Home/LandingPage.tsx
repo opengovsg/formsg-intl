@@ -20,7 +20,6 @@ import {
 } from '@chakra-ui/react'
 import dedent from 'dedent'
 
-import { AppFooter } from '~/app/AppFooter'
 import { AppPublicHeader } from '~/app/AppPublicHeader'
 import FormBrandLogo from '~/assets/svgs/brand/brand-mark-colour.svg'
 
@@ -426,7 +425,6 @@ export const LandingPage = (): JSX.Element => {
           </Button>
         </Box>
       </LandingSection>
-      <AppFooter />
     </>
   )
 }
