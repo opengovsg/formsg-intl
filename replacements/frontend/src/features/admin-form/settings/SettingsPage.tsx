@@ -30,8 +30,6 @@ import { SettingsTab } from './components/SettingsTab'
 import { useAdminFormSettings } from './queries'
 import { SettingsEmailsPage } from './SettingsEmailsPage'
 import { SettingsGeneralPage } from './SettingsGeneralPage'
-import { SettingsPaymentsPage } from './SettingsPaymentsPage'
-import { SettingsTwilioPage } from './SettingsTwilioPage'
 import { SettingsWebhooksPage } from './SettingsWebhooksPage'
 
 interface TabEntry {
@@ -80,22 +78,10 @@ export const SettingsPage = (): JSX.Element => {
       },
       emailsNotificationsTab,
       {
-        label: 'Twilio credentials',
-        icon: BiMessage,
-        component: SettingsTwilioPage,
-        path: 'twilio-credentials',
-      },
-      {
         label: 'Webhooks',
         icon: BiCodeBlock,
         component: SettingsWebhooksPage,
         path: 'webhooks',
-      },
-      {
-        label: 'Payments',
-        icon: BiDollar,
-        component: SettingsPaymentsPage,
-        path: 'payments',
       },
     ]
 
