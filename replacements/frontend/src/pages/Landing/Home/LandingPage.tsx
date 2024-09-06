@@ -147,11 +147,11 @@ export const LandingPage = (): JSX.Element => {
             title="Drag and drop builder"
             description="Launch forms in minutes with the drag-and-drop builder, and over 20 types of fields to choose from"
           />
-          <FeatureGridItem
+          {/* <FeatureGridItem
             image={featureIntegrationsImg}
             title="Singpass and Myinfo"
             description="Authenticate individuals or businesses with Singpass, and speed up form filling with pre-filled data from Myinfo"
-          />
+          /> */}
           <FeatureGridItem
             image={featureLogicImg}
             title="Conditional logic"
