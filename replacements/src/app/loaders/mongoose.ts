@@ -90,6 +90,40 @@ export default async (): Promise<Connection> => {
     })
   })
 
+  // Inspect cluster topology from client
+  const client = mongoose.connection.getClient()
+  const {
+    description: { servers, type },
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+  } = client.topology
+
+  if (
+    type === 'ReplicaSetWithPrimary' &&
+    ![...servers.values()].some(
+      ({ type }: { type: string }) => type === 'RSSecondary',
+    )
+  ) {
+    // There are no secondary nodes in ReplicaSetWithPrimary cluster.
+    // Queries with `secondary` read preferences will fail, so rewrite
+    // those to be `secondaryPreferred`.
+    logger.warn({
+      message:
+        'ReplicaSetWithPrimary cluster has no secondary nodes. ' +
+        'Forcing secondary read preference to secondaryPreferred.',
+      meta: {
+        action: 'schema',
+      },
+    })
+    Object.values(mongoose.models).forEach((model) => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      if (model.schema.get('read')?.mode === 'secondary') {
+        model.schema.set('read', 'secondaryPreferred')
+      }
+    })
+  }
+
   // Seed db with initial agency if we have none
   if (
     process.env.INIT_AGENCY_DOMAIN &&
