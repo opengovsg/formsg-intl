@@ -1,10 +1,10 @@
 import { MYINFO_ATTRIBUTE_MAP } from '~shared/constants/field/myinfo'
 import {
+  AllowedMyInfoFieldOption,
   AttachmentSize,
   BasicField,
   FieldCreateDto,
   MyInfoAttribute,
-  MyInfoChildAttributes,
   MyInfoField,
   RatingShape,
 } from '~shared/types/field'
@@ -35,6 +35,9 @@ export const getFieldCreationMeta = (fieldType: BasicField): FieldCreateDto => {
   }
 
   switch (fieldType) {
+    case BasicField.Nric:
+    case BasicField.Uen:
+      throw new Error('Singapore-specific fields are disallowed in formsg-intl')
     case BasicField.Attachment: {
       return {
         fieldType,
@@ -214,10 +217,7 @@ export const getFieldCreationMeta = (fieldType: BasicField): FieldCreateDto => {
 }
 
 export const getMyInfoFieldCreationMeta = (
-  myInfoAttribute: Exclude<
-    MyInfoAttribute,
-    MyInfoChildAttributes[keyof MyInfoChildAttributes]
-  >,
+  myInfoAttribute: AllowedMyInfoFieldOption,
 ): MyInfoField => {
   const baseMeta: Pick<
     MyInfoField,
