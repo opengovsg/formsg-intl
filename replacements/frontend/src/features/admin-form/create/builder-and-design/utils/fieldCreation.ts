@@ -213,6 +213,12 @@ export const getFieldCreationMeta = (fieldType: BasicField): FieldCreateDto => {
         ...baseMeta,
       }
     }
+    case BasicField.Address: {
+      return {
+        fieldType,
+        ...baseMeta,
+      }
+    }
   }
 }
 
@@ -221,11 +227,19 @@ export const getMyInfoFieldCreationMeta = (
 ): MyInfoField => {
   const baseMeta: Pick<
     MyInfoField,
-    'disabled' | 'required' | 'title' | 'description' | 'fieldType' | 'myInfo'
+    | 'disabled'
+    | 'required'
+    | 'title'
+    | 'description'
+    | 'fieldType'
+    | 'myInfo'
+    | 'titleTranslations'
+    | 'descriptionTranslations'
   > = {
     disabled: false,
     required: true,
     title: MYINFO_ATTRIBUTE_MAP[myInfoAttribute].value,
+    titleTranslations: MYINFO_ATTRIBUTE_MAP[myInfoAttribute]?.titleTranslations,
     description: '',
     fieldType: MYINFO_ATTRIBUTE_MAP[myInfoAttribute].fieldType,
     myInfo: {
